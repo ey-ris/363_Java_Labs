@@ -64,8 +64,10 @@ public class SelectQuery  {
 		
 		Table result = new Table(s);
 		for (Tuple t: table) {
-			// TODO 
 			// if tuple t satisfies the condition, insert t into the result table.
+			if (cond.eval(t)) {
+				result.insert(t.project(s));
+			}
 		}
 		return result;
 	}
