@@ -28,14 +28,15 @@ public class OrderedIndex implements Index {
 
 	@Override
 	public boolean insert(int key, int row_no) {
-		int index = searchGE(key);
+		int index = searchGE(key); // Find where to insert
 
 		if (index < entries.size() && entries.get(index).key == key) {
-			// Key exists, add row_no to the existing entry
-			entries.get(index).rows.add(row_no);
-			Collections.sort(entries.get(index).rows); // Keep row numbers sorted (important for delete)
+			// Key exists, add row_no and keep the list sorted
+			IndexEntry entry = entries.get(index);
+			entry.rows.add(row_no);
+			Collections.sort(entry.rows); // Maintain sorted order of row numbers
 		} else {
-			// Key doesn't exist, create a new entry
+			// Key doesn't exist, create a new entry and insert it at the correct position
 			IndexEntry newEntry = new IndexEntry();
 			newEntry.key = key;
 			newEntry.rows.add(row_no);
