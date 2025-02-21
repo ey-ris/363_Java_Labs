@@ -1,5 +1,6 @@
 package heapdb;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.nio.ByteBuffer;
 
@@ -119,18 +120,27 @@ public class TableHeap implements ITable {
 		return size;
 	}
 
-	@Override
 	public boolean insert(Tuple rec) {
-		// check primary key
-		if (schema.getKey()!=null) {
-			Tuple t = lookup(rec.getKey());
-			if (t != null) {
-				return false;  // duplicate primary key
+		int row_no = -1;
+		String keyColumnName = schema.getKey();
+		int keyColumnIndex = schema.getColumnIndex(keyColumnName);
+
+		if (keyColumnName != null) {
+			int key = rec.getInt(keyColumnIndex);
+			if (indexes[keyColumnIndex] != null) {
+				if (indexes[keyColumnIndex].lookupOne(key) != -1) {
+					return false; // Duplicate primary key
+				}
+			} else {
+				// No index, perform a full table scan
+				for (Tuple t : this) {
+					if (t.get(keyColumnName).equals(key)) {
+						return false; // Duplicate primary key found in full scan
+					}
+				}
 			}
 		}
 
-		// Find empty space for row
-		int row_no = -1;
 		for (int i = 0; i < Constants.BLOCK_SIZE * 8; i++) {
 			if (!bitmap.getBit(i)) {
 				row_no = i;
@@ -138,92 +148,80 @@ public class TableHeap implements ITable {
 			}
 		}
 
-		if (row_no == -1) {
-			return false; // No space available
-		}
+		if (row_no == -1) return false; // No space available
 
-		// Write the tuple to the file
 		writeTuple(row_no, rec);
-
-		// Set space occupied in the bitmap
 		bitmap.setBit(row_no);
-		
+
 		for (int i = 0; i < indexes.length; i++) {
 			if (indexes[i] != null) {
-				// TODO in lab14. 
+				int key = rec.getInt(i);
+				indexes[i].insert(key, row_no);
 			}
 		}
+
 		return true;
 	}
 
-	@Override
 	public boolean delete(Object key) {
-		String keyColumnName = schema.getKey();
-		if (keyColumnName == null)
-			throw new RuntimeException("Cannot delete when schema does not have a key.");
+		int keyColumnIndex = schema.getColumnIndex(schema.getKey());
+		if (keyColumnIndex < 0) throw new RuntimeException("Schema has no key");
 
 		int row_no = -1;
-		TupleIterator it = new TupleIterator();
-		while (it.hasNext()) {
-			Tuple t = it.next();
-			if (t.get(keyColumnName).equals(key)) { // Compare by key
-				row_no = it.getRowNo();
-				break; // exit the loop once found
+		if (indexes[keyColumnIndex] != null) {
+			row_no = indexes[keyColumnIndex].lookupOne((int) key);
+		} else {
+			Iterator<Tuple> it = iterator();
+			while (it.hasNext()) {
+				Tuple t = it.next();
+				if (t.get(schema.getKey()).equals(key)) {
+					row_no = ((TupleIterator) it).getRowNo();
+					break;
+				}
 			}
 		}
 
-		if (row_no == -1) {
-			return false; // Tuple not found
-		}
+		if (row_no == -1) return false;
 
-		// Mark the space free in the bitmap
 		bitmap.clearBit(row_no);
-
 		for (int i = 0; i < indexes.length; i++) {
 			if (indexes[i] != null) {
-				// TODO in lab14.
+				int keyToDelete = readTuple(row_no).getInt(i);
+				indexes[i].delete(keyToDelete, row_no);
 			}
 		}
-
 		return true;
-		//throw new UnsupportedOperationException();
 	}
 
-	@Override
 	public Tuple lookup(Object key) {
-		String keyColumnName = schema.getKey();
-		if (keyColumnName == null) throw new RuntimeException("Cannot lookup by key when schema does not have a key.");
-
-		TupleIterator it = new TupleIterator();
-		while (it.hasNext()) {
-			Tuple t = it.next();
-			if (t.get(keyColumnName).equals(key)) {
-				return t;
-			}
+		int keyColumnIndex = schema.getColumnIndex(schema.getKey());
+		if (indexes[keyColumnIndex] != null) {
+			int row_no = indexes[keyColumnIndex].lookupOne((int) key);
+			return row_no != -1 ? readTuple(row_no) : null;
 		}
 
-		return null; // Tuple not found
-		//throw new UnsupportedOperationException();
+		for (Tuple t : this) {
+			if (t.get(schema.getKey()).equals(key)) return t;
+		}
+		return null;
 	}
 
-	@Override
 	public ITable lookup(String colname, Object value) {
-	    ITable result = new Table(schema);
+		ITable result = new Table(schema);
+		int colIndex = schema.getColumnIndex(colname);
 
-		TupleIterator it = new TupleIterator();
-		while (it.hasNext()) {
-			Tuple t = it.next();
-			if (t.get(colname).equals(value)) {
-				result.insert(t);
+		if (indexes[colIndex] != null) {
+			for (int row_no : indexes[colIndex].lookupMany((int) value)) {
+				result.insert(readTuple(row_no));
+			}
+		} else {
+			for (Tuple t : this) {
+				if (t.get(colname).equals(value)) result.insert(t);
 			}
 		}
-
 		return result;
-	    //throw new UnsupportedOperationException();
 	}
 
-
-	
 	public boolean createIndex(String columnName) {
 		int col_index = schema.getColumnIndex(columnName);
 		if (col_index < 0) {

@@ -59,7 +59,6 @@ public class TableHeapTest {
 		// insert should fail if the key value *is* already in the table
 		boolean insertSucceeded = table.insert(oldTup);
 		assertFalse(insertSucceeded);
-		 
 	}
 
 	@Test
