@@ -26,11 +26,11 @@ public class EqCondition extends Condition {
 	public Object getValue() {
 		return value;
 	}
-	
+
 	@Override
 	public Boolean eval(Tuple tuple) {
-		// TODO compare the value of the tuple column to the value variable.
-		throw new UnsupportedOperationException();
+		Object tupleValue = tuple.get(colName); // Get the value from the tuple for the specified column
+		return value.equals(tupleValue); // Compare the condition's value with the tuple's value
 	}
 	
 	@Override

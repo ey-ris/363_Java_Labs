@@ -20,12 +20,11 @@ public class OrCondition extends Condition {
 	
 	@Override
 	public Boolean eval(Tuple tuple) {
-		// TODO 
-		throw new UnsupportedOperationException();
+		return cond1.eval(tuple) || cond2.eval(tuple);
 	}
 	
 	@Override
 	public String toString() {
-		return "(" +cond1+" and "+cond2+ ")";
+		return "(" +cond1+" or "+cond2+ ")";
 	}
 }
