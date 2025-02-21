@@ -1,6 +1,7 @@
 package heapdb;
 
 import java.util.ArrayList;
+import java.util.Collections;
 
 public class OrderedIndex implements Index {
 	
@@ -24,69 +25,92 @@ public class OrderedIndex implements Index {
 	public OrderedIndex(String indexName) {
 		this.name = indexName;
 	}
-	
+
 	@Override
 	public boolean insert(int key, int row_no) {
-	
-		// TODO 
-		
-		// add a new IndexEntry or 
-		// add the row_no to an existing entry
-		
-		throw new UnsupportedOperationException();
+		int index = searchGE(key);
 
+		if (index < entries.size() && entries.get(index).key == key) {
+			// Key exists, add row_no to the existing entry
+			entries.get(index).rows.add(row_no);
+			Collections.sort(entries.get(index).rows); // Keep row numbers sorted (important for delete)
+		} else {
+			// Key doesn't exist, create a new entry
+			IndexEntry newEntry = new IndexEntry();
+			newEntry.key = key;
+			newEntry.rows.add(row_no);
+			entries.add(index, newEntry); // Insert at the correct sorted position
+		}
+		return true;
 	}
 
 	@Override
 	public int lookupOne(int key) {
-		// TO DO 
-		// return the row number of the key.
-		// -1 if the key does not exist
-		// if there are multiple row numbers, return the first one.
-		
-		throw new UnsupportedOperationException();
+		int index = searchEQ(key);
+		if (index != -1) {
+			return entries.get(index).rows.get(0); // Return the first row number
+		}
+		return -1;
 	}
-	
+
 	@Override
-	public ArrayList<Integer> lookupMany(int key){
-		// TODO 
-		// return the list of row number for the key.
-		// if the key does not exist, return an empty list.
-		
-		throw new UnsupportedOperationException();
+	public ArrayList<Integer> lookupMany(int key) {
+		int index = searchEQ(key);
+		if (index != -1) {
+			return entries.get(index).rows;
+		}
+		return new ArrayList<>(); // Return an empty list if key doesn't exist
 	}
-	
+
 	@Override
 	public boolean delete(int key, int row_no) {
-		
-		// TODO 
-		// delete row_number from the list of row numbers for the key
-		// if the key is not found, return false
-		// if the list of row_number is empty, delete the index entry
-		
-		throw new UnsupportedOperationException();
+		int index = searchEQ(key);
+		if (index == -1) {
+			return false; // Key not found
+		}
+
+		IndexEntry entry = entries.get(index);
+		if (entry.rows.remove(Integer.valueOf(row_no))) { // Use Integer.valueOf() to remove by value
+			if (entry.rows.isEmpty()) {
+				entries.remove(index); // Delete the entry if the list is empty
+			}
+			return true;
+		}
+
+		return false; // Row number not found for the key
 	}
-	
-	/*
-	 * return -1 if the key not found in entries
-	 * return index of entries equal to key
-	 */
+
 	private int searchEQ(int key) {
-		// TODO 
-		// perform binary search for key value
-		throw new UnsupportedOperationException();
+		int low = 0;
+		int high = entries.size() - 1;
+
+		while (low <= high) {
+			int mid = low + (high - low) / 2;
+			if (entries.get(mid).key == key) {
+				return mid;
+			} else if (entries.get(mid).key < key) {
+				low = mid + 1;
+			} else {
+				high = mid - 1;
+			}
+		}
+		return -1; // Key not found
 	}
-	
-	/*
-	 * return index of entry equal to key 
-	 * or where to add the new entry
-	 */
+
 	private int searchGE(int key) {
-		// TODO 
-		// perform binary search 
-		throw new UnsupportedOperationException();
+		int low = 0;
+		int high = entries.size() - 1;
+
+		while (low <= high) {
+			int mid = low + (high - low) / 2;
+			if (entries.get(mid).key >= key) {
+				high = mid - 1;
+			} else {
+				low = mid + 1;
+			}
+		}
+		return low; // Index where the key should be inserted or the index of the first greater element
 	}
-	
 	
 	public void diagnosticPrint() {
 		System.out.println(name);
