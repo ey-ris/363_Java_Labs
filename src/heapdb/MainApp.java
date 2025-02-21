@@ -1,5 +1,9 @@
 package heapdb;
 
+import heapdb.query.Condition;
+import heapdb.query.EqCondition;
+import heapdb.query.SelectQuery;
+
 public class MainApp {
     public static void main(String[] args) {
         // Step 1: Define the schema for the Instructor table
@@ -32,24 +36,37 @@ public class MainApp {
         boolean deleteAgain = table.delete(12121);
         System.out.println("\ndelete 12121:" + deleteAgain);
 
-        // Step 7: Lookup an existing row using ID = 19803 and a non-existing ID = 12121
-        Tuple foundTuple = table.lookup(19803);
-        System.out.println("\nlookup 19803: " + (foundTuple != null ? foundTuple : "null"));
+        // Step 7: Lookup using SelectQuery and Condition (ID = 19803)
+        Condition condition1 = new EqCondition("ID", 19803);
+        SelectQuery selectQuery1 = new SelectQuery(condition1);
+        ITable foundTable1 = selectQuery1.eval(table);  // Use eval() on the table
+        System.out.println("\nlookup 19803 (SelectQuery):");
+        System.out.println(foundTable1);  // Print the resulting table
 
-        Tuple notFoundTuple = table.lookup(12121);
-        System.out.println("lookup 12121: " + (notFoundTuple != null ? notFoundTuple : "null"));
+        // Lookup using SelectQuery and Condition (ID = 12121 - not found)
+        Condition condition2 = new EqCondition("ID", 12121);
+        SelectQuery selectQuery2 = new SelectQuery(condition2);
+        ITable notFoundTable2 = selectQuery2.eval(table);
+        System.out.println("\nlookup 12121 (SelectQuery):");
+        System.out.println(notFoundTable2); // Print the resulting table (should be empty)
 
-        // Step 8: Demonstrate lookup using column evaluation (e.g., department name)
-        System.out.println("\neval dept_name=Comp. Sci.");
-        Table compSciDept = (Table) table.lookup("dept_name", "Comp. Sci.");
+        // Step 8: Demonstrate lookup using column evaluation with SelectQuery
+        Condition condition3 = new EqCondition("dept_name", "Comp. Sci.");
+        SelectQuery selectQuery3 = new SelectQuery(condition3);
+        ITable compSciDept = selectQuery3.eval(table);
+        System.out.println("\neval dept_name=Comp. Sci. (SelectQuery):");
         System.out.println(compSciDept);
 
-        System.out.println("\neval ID=19803");
-        Table idLookup = (Table) table.lookup("ID", 19803);
+        Condition condition4 = new EqCondition("ID", 19803);
+        SelectQuery selectQuery4 = new SelectQuery(condition4);
+        ITable idLookup = selectQuery4.eval(table);
+        System.out.println("\neval ID=19803 (SelectQuery):");
         System.out.println(idLookup);
 
-        System.out.println("\neval ID=19802");
-        Table idNotFound = (Table) table.lookup("ID", 19802);
+        Condition condition5 = new EqCondition("ID", 19802);
+        SelectQuery selectQuery5 = new SelectQuery(condition5);
+        ITable idNotFound = selectQuery5.eval(table);
+        System.out.println("\neval ID=19802 (SelectQuery):");
         System.out.println(idNotFound);
     }
 }
