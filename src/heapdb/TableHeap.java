@@ -128,12 +128,25 @@ public class TableHeap implements ITable {
 				return false;  // duplicate primary key
 			}
 		}
-		
-		// TODO 
-		
-		// find empty space for row
-		// write the tuple to the file
-		// set space occupied in the bitmap
+
+		// Find empty space for row
+		int row_no = -1;
+		for (int i = 0; i < Constants.BLOCK_SIZE * 8; i++) {
+			if (!bitmap.getBit(i)) {
+				row_no = i;
+				break;
+			}
+		}
+
+		if (row_no == -1) {
+			return false; // No space available
+		}
+
+		// Write the tuple to the file
+		writeTuple(row_no, rec);
+
+		// Set space occupied in the bitmap
+		bitmap.setBit(row_no);
 		
 		for (int i = 0; i < indexes.length; i++) {
 			if (indexes[i] != null) {
@@ -149,17 +162,31 @@ public class TableHeap implements ITable {
 		if (keyColumnName == null)
 			throw new RuntimeException("Cannot delete when schema does not have a key.");
 
-		// TODO
-		// lookup the row
-		// if not found, return false
-		// mark the space free in the bitmap
+		int row_no = -1;
+		TupleIterator it = new TupleIterator();
+		while (it.hasNext()) {
+			Tuple t = it.next();
+			if (t.get(keyColumnName).equals(key)) { // Compare by key
+				row_no = it.getRowNo();
+				break; // exit the loop once found
+			}
+		}
+
+		if (row_no == -1) {
+			return false; // Tuple not found
+		}
+
+		// Mark the space free in the bitmap
+		bitmap.clearBit(row_no);
 
 		for (int i = 0; i < indexes.length; i++) {
 			if (indexes[i] != null) {
 				// TODO in lab14.
 			}
 		}
-		throw new UnsupportedOperationException();
+
+		return true;
+		//throw new UnsupportedOperationException();
 	}
 
 	@Override
@@ -167,21 +194,32 @@ public class TableHeap implements ITable {
 		String keyColumnName = schema.getKey();
 		if (keyColumnName == null) throw new RuntimeException("Cannot lookup by key when schema does not have a key.");
 
-		//TODO
-		// find the row with the given key value
-		
-		throw new UnsupportedOperationException();
+		TupleIterator it = new TupleIterator();
+		while (it.hasNext()) {
+			Tuple t = it.next();
+			if (t.get(keyColumnName).equals(key)) {
+				return t;
+			}
+		}
+
+		return null; // Tuple not found
+		//throw new UnsupportedOperationException();
 	}
 
 	@Override
 	public ITable lookup(String colname, Object value) {
 	    ITable result = new Table(schema);
-		
-	    // TODO 
-	    // find all rows with the given column value
-	    // insert the row into result table and return 
-	    
-	    throw new UnsupportedOperationException();
+
+		TupleIterator it = new TupleIterator();
+		while (it.hasNext()) {
+			Tuple t = it.next();
+			if (t.get(colname).equals(value)) {
+				result.insert(t);
+			}
+		}
+
+		return result;
+	    //throw new UnsupportedOperationException();
 	}
 
 
